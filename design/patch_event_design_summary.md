@@ -25,7 +25,7 @@ Hard deletion conflicts with ADK’s _append-only_ contract, hence **issue #1013
 
 ## 2  Goals & Non-Goals
 
-| ✅ Goals | ❌ Out of scope |
+|  Goals |  Out of scope |
 |---|---|
 | Precise, explicit log pruning. | Mutating or deleting rows in place. |
 | Preserve auditability / replay. | Automatic retention policies. |
