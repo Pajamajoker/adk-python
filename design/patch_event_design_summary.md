@@ -2,7 +2,7 @@
 ## PatchEvent Mechanism for Session Pruning  
 ### Based on Issues #1013 & #1588  
 
-**Author**: [Prathamesh Joshi](https://www.linkedin.com/in/jpratham)  
+**Author**: [Prathamesh Joshi](https://www.linkedin.com/in/prathamesh-j-9b9970147/)  
 **Status**: _Draft for Review_  
 **Created**: 2025-06-30  
 
