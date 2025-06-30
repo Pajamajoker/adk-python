@@ -163,11 +163,3 @@ No migrations—`PatchEvent` stores as opaque JSON in existing `events` table.
 * **Security** – explicit API discourages accidental data loss.
 
 ---
-
-## 9  Next Steps
-
-1. Maintainers sign off on schema & API.  
-2. Contributor opens PR implementing Phase 0 (code + docs).  
-3. Review, iterate, merge, and cut `v0.9.x-beta`.
-
----
