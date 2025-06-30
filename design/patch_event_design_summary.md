@@ -5,8 +5,9 @@
 **Author**: [Prathamesh Joshi](https://www.linkedin.com/in/jpratham)  
 **Status**: _Draft for Review_  
 **Created**: 2025-06-30  
+
 > **TL;DR**  
-> Introduce an **append-only `PatchEvent`** that lets developers _logically_ splice, truncate, summarise, redact, or override session data without ever mutating the underlying immutable event log. The design is additive (no breaking changes), keeps audit trails intact, and scales with snapshots or incremental folding.
+> Introduce an **append-only `PatchEvent`** that lets developers _logically_ splice, truncate, summarise session data without ever mutating the underlying immutable event log. The design is additive (no breaking changes), keeps audit trails intact, and scales with snapshots or incremental folding.
 
 ---
 
@@ -16,8 +17,7 @@
 Large tool results and RAG passages quickly bloat `session.events`, forcing crude *oldest-first* truncation and hitting model context/rate limits. Developers need precise, audit-safe ways to:
 
 * Delete obsolete tool dumps.  
-* Replace verbose spans with summaries.  
-* Redact PII or fix corrupted `state` keys.
+* Replace verbose spans with summaries.
 
 Hard deletion conflicts with ADK’s _append-only_ contract, hence **issue #1013**.
 
@@ -43,8 +43,6 @@ class PatchEvent(Event):
         "splice",            # delete/replace slice
         "truncate_before",   # drop all events before `event_id`
         "summarise",         # replace slice with a summary Event
-        "redact",            # zero-out JSON paths in specific events
-        "state_override",    # override a single state key
     ]
     # splice
     start: int | None = None
@@ -54,12 +52,6 @@ class PatchEvent(Event):
     event_id: str | None = None
     # summarise
     summary_event: Event | None = None
-    # redact
-    event_ids: list[str] | None = None
-    paths: list[str] | None = None
-    # state_override
-    key: str | None = None
-    value: Any | None = None
 ```
 
 ### 3.2 Service API (additive)
@@ -123,21 +115,15 @@ sess = await session_svc.get_session(...)
 # audit log still contains the original events + PatchEvent.
 ```
 
-Other patch modes follow the same pattern (`truncate_before`, `summarise`, etc.).
+### What changed vs. today?
 
----
-
-
-### What changes vs. today?
-
-**Before** — `session.events` ⟶ *audit log* (raw, unfiltered).
-
+**Before** — `session.events` ⟶ *audit log* (raw, unfiltered).  
 **After**  — `session.events` ⟶ *visible log* (folded view after applying all `PatchEvent`s).  
 The unfiltered list is retained internally (or in the database) for audit/debugging.
 
 *No existing code breaks*: any code that previously just **read** `session.events` now gets the pruned view—which is typically what it wanted.
 
-Power‑users who need the raw list can call a future helper such as:
+Power-users who need the raw list can call a future helper such as:
 
 ```python
 raw = await session_svc.get_raw_events(session_id)
@@ -145,8 +131,9 @@ raw = await session_svc.get_raw_events(session_id)
 sess.audit_events
 ```
 
-but normal agent execution continues to operate on the 'visible' log only.
+but normal agent execution continues to operate on the visible log only.
 
+---
 
 ## 6  Testing Plan
 
@@ -163,8 +150,7 @@ but normal agent execution continues to operate on the 'visible' log only.
 |---|---|---|
 | 0 | Core `PatchEvent`, `splice`; in-memory impl; docs draft. | off |
 | 1 | `truncate_before`; incremental fold cache; DB backend. | `ADK_PATCH_EXPERIMENTAL=1` |
-| 2 | `summarise`, `state_override`; snapshot helper. | on (default) |
-| 3 | `redact`; interval index (if needed). | on |
+| 2 | `summarise`; snapshot helper. | on (default) |
 
 No migrations—`PatchEvent` stores as opaque JSON in existing `events` table.
 
@@ -172,10 +158,16 @@ No migrations—`PatchEvent` stores as opaque JSON in existing `events` table.
 
 ## 8  Implications
 
-* **Audit & Compliance** – log is never rewritten; redaction mode supports GDPR removal without data loss.  
 * **Performance** – sub-ms fold for common cases; snapshots keep worst-case bounded.  
 * **Backward Compatibility** – additive API; older SDKs ignore unknown `patch_type`.  
-* **Security** – explicit API discourages accidental data loss; redaction paths configurable.
+* **Security** – explicit API discourages accidental data loss.
 
 ---
 
+## 9  Next Steps
+
+1. Maintainers sign off on schema & API.  
+2. Contributor opens PR implementing Phase 0 (code + docs).  
+3. Review, iterate, merge, and cut `v0.9.x-beta`.
+
+---
